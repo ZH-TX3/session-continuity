@@ -1,0 +1,16 @@
+{
+  "handoff": {
+    "promptMode": "reply",
+    "staleDays": 3,
+    "autoLoadMaxAge": 3600
+  },
+  "context": {
+    "earlyWarningThreshold": 0.70,
+    "criticalThreshold": 0.80,
+    "forceSaveThreshold": 0.85
+  },
+  "insight": {
+    "enabled": true,
+    "minMessages": 10
+  }
+}

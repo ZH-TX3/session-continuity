@@ -1,0 +1,21 @@
+{
+  "name": "session-continuity",
+  "owner": {
+    "name": "XiaoJianJian"
+  },
+  "metadata": {
+    "description": "会话连续性管理 — 自动保存/加载会话状态，上下文预警，Insight 捕获",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "session-continuity",
+      "description": "Session continuity management with handoff detection, context warnings, and insight capture",
+      "version": "1.0.0",
+      "author": {
+        "name": "XiaoJianJian"
+      },
+      "source": "./"
+    }
+  ]
+}
