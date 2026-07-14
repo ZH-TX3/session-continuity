@@ -1,12 +1,14 @@
 """Handoff 文件操作。"""
 
 import os
+import sys
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(__file__))
 from locking import file_lock
 from lib.paths import get_claude_dir
 
