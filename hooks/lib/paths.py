@@ -1,99 +1,57 @@
-"""路径查找逻辑 — 自动查找 .claude 目录"""
+"""路径查找逻辑 — 自动查找 .claude 目录。"""
 
 import os
 from pathlib import Path
 
 
-def find_project_root() -> Path:
-    """从当前目录向上查找包含 .claude 的目录作为项目根目录。
-
-    查找顺序:
-    1. 从当前工作目录开始
-    2. 向上遍历父目录
-    3. 找到包含 .claude 的目录即返回
-    4. 如果遍历到根目录仍未找到，返回当前工作目录
-
-    Returns:
-        Path: 项目根目录路径
-    """
-    # 优先使用环境变量 (如果设置)
-    env_root = os.environ.get("CLAUDE_PROJECT_DIR")
+def find_project_root(cwd: str | Path | None = None) -> Path:
+    """优先使用 CLAUDE_PROJECT_DIR，否则从 cwd 向上查找 .claude。"""
+    env_root = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
     if env_root:
-        root = Path(env_root)
-        if root.is_dir():
-            return root
+        return Path(env_root).expanduser().resolve()
 
-    # 从当前目录向上查找
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".claude").is_dir():
-            return current
+    current = Path(cwd) if cwd else Path.cwd()
+    current = current.resolve()
+    if current.is_file():
         current = current.parent
-
-    # 未找到，返回当前目录
-    return Path.cwd()
-
-
-def get_claude_dir() -> Path:
-    """获取 .claude 目录路径。
-
-    Returns:
-        Path: .claude 目录路径
-    """
-    return find_project_root() / ".claude"
+    for candidate in (current, *current.parents):
+        if (candidate / ".claude").is_dir():
+            return candidate
+    raise RuntimeError(f"无法从 {current} 定位包含 .claude 的项目目录")
 
 
-def get_config_path() -> Path:
-    """获取插件配置文件路径。
-
-    Returns:
-        Path: .claude/session-continuity.json 的完整路径
-    """
-    return get_claude_dir() / "session-continuity.json"
+def get_claude_dir(cwd: str | Path | None = None) -> Path:
+    """获取项目 .claude 目录路径。"""
+    return find_project_root(cwd) / ".claude"
 
 
-def get_state_path() -> Path:
-    """获取状态文件路径。
-
-    Returns:
-        Path: .claude/.hooks-state.json 的完整路径
-    """
-    return get_claude_dir() / ".hooks-state.json"
+def get_continuity_dir(cwd: str | Path | None = None) -> Path:
+    return get_claude_dir(cwd) / "session-continuity"
 
 
-def get_handoff_path() -> Path:
-    """获取 HANDOFF 文件路径。
-
-    Returns:
-        Path: .claude/HANDOFF.md 的完整路径
-    """
-    return get_claude_dir() / "HANDOFF.md"
+def get_config_path(cwd: str | Path | None = None) -> Path:
+    return get_claude_dir(cwd) / "session-continuity.json"
 
 
-def get_consumed_path() -> Path:
-    """获取已消费的 HANDOFF 文件路径。
-
-    Returns:
-        Path: .claude/HANDOFF.consumed.md 的完整路径
-    """
-    return get_claude_dir() / "HANDOFF.consumed.md"
+def get_state_path(cwd: str | Path | None = None) -> Path:
+    return get_continuity_dir(cwd) / "state.json"
 
 
-def get_insights_index_path() -> Path:
-    """获取 Insights 索引文件路径。
-
-    Returns:
-        Path: .claude/insights/INDEX.md 的完整路径
-    """
-    return get_claude_dir() / "insights" / "INDEX.md"
+def get_handoff_path(cwd: str | Path | None = None) -> Path:
+    return get_claude_dir(cwd) / "HANDOFF.md"
 
 
-def get_log_path() -> Path:
-    """获取日志文件路径。
+def get_insights_index_path(cwd: str | Path | None = None) -> Path:
+    return get_claude_dir(cwd) / "insights" / "INDEX.md"
 
-    Returns:
-        Path: .claude/hooks/log/hook.log 的完整路径
-    """
-    log_dir = get_claude_dir() / "hooks" / "log"
+
+def get_log_path(cwd: str | Path | None = None) -> Path:
+    log_dir = get_continuity_dir(cwd) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir / "hook.log"
+
+
+def is_continuity_handler(handler: str = "plugin") -> bool:
+    """确保项目 Hook 与插件 Hook 只启用一个主处理器。"""
+    owner = os.environ.get("CLAUDE_SESSION_CONTINUITY_HANDLER", "project").strip().lower()
+    return owner == handler

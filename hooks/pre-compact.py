@@ -1,4 +1,4 @@
-"""PreCompact hook — 自动压缩前触发保存"""
+"""PreCompact hook — 只提醒手动保存，不自动创建 Handoff。"""
 
 import io
 import json
@@ -6,70 +6,51 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# 添加 lib 目录到 sys.path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+HOOKS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(HOOKS_DIR))
 
-from lib.paths import get_handoff_path, get_log_path
-
-
-def log(msg: str) -> None:
-    """写入日志"""
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_path = get_log_path()
-    with open(log_path, "a", encoding="utf-8", errors="replace") as f:
-        f.write(f"[{ts}] {msg}\n")
+from handoff import handoff_path
+from lib.paths import get_claude_dir, find_project_root, is_continuity_handler
 
 
-def main():
-    """主函数"""
-    # 设置 stdout 编码
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+def log(message: str, cwd: str | Path | None = None) -> None:
+    try:
+        log_path = get_claude_dir(cwd) / "session-continuity" / "logs" / "hook.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with log_path.open("a", encoding="utf-8", errors="replace") as stream:
+            stream.write(f"[{timestamp}] {message}\n")
+    except Exception:
+        pass
 
-    # 读取 stdin
+
+def main() -> None:
     raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
-    log(f"PreCompact fired | stdin={raw}")
-
     try:
         data = json.loads(raw) if raw.strip() else {}
-    except Exception:
+    except json.JSONDecodeError:
         data = {}
 
-    trigger = data.get("trigger", "unknown")
+    cwd = data.get("cwd")
+    if not is_continuity_handler():
+        log("PreCompact: plugin handler disabled", cwd)
+        return
+    if data.get("trigger", "unknown") != "auto":
+        log("PreCompact: non-auto trigger, silent", cwd)
+        return
+    try:
+        project_root = find_project_root(cwd)
+    except RuntimeError as error:
+        log(f"PreCompact: {error}", cwd)
+        return
+    if handoff_path(project_root).exists():
+        log("PreCompact: HANDOFF.md already exists, silent", project_root)
+        return
 
-    if trigger != "auto":
-        log(f"PreCompact: trigger={trigger}, skip injection")
-        sys.exit(0)
-
-    # HANDOFF.md 已存在时跳过自动保存 (保留用户手动 /save-state 的内容)
-    handoff_path = get_handoff_path()
-    if handoff_path.exists():
-        log("PreCompact: HANDOFF.md exists, skip auto-save")
-        sys.exit(0)
-
-    instruction = (
-        "[System: Context auto-compression detected]\n"
-        "\n"
-        "Please run `/save-state` immediately to save current session state before compression."
-    )
-
-    fallback_msg = (
-        "HANDOFF auto-save may not have taken effect. Please run /save-state manually to save session state."
-    )
-
-    log("PreCompact: trigger=auto, injected auto-save instruction")
-
-    print(
-        json.dumps(
-            {
-                "systemMessage": fallback_msg,
-                "hookSpecificOutput": {
-                    "hookEventName": "PreCompact",
-                    "additionalContext": instruction,
-                },
-            },
-            ensure_ascii=False,
-        )
-    )
+    message = "上下文即将自动压缩；当前没有 Handoff。如需跨会话续接，请现在手动执行 /save-state。"
+    log("PreCompact: reminded manual /save-state", project_root)
+    print(json.dumps({"systemMessage": message}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

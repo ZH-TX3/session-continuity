@@ -1,111 +1,119 @@
-"""状态管理模块 — 跨 hooks 共享状态"""
+"""状态管理模块 — 跨 hooks 共享状态。"""
 
 import json
+import os
+import uuid
 from pathlib import Path
 
+from locking import file_lock
 from .paths import get_state_path
 
+_MAX_SESSION_ENTRIES = 100
 
-def _read_state() -> dict:
-    """读取状态文件，不存在则返回默认结构。
 
-    Returns:
-        dict: 状态字典
-    """
-    state_path = get_state_path()
+def _default_state() -> dict:
+    return {
+        "session_models": {},
+        "prompted_sessions": [],
+        "warned_sessions": [],
+        "insight_turns": {},
+    }
+
+
+def _read_state(cwd: str | Path | None = None) -> dict:
+    state_path = get_state_path(cwd)
     if not state_path.exists():
-        return {
-            "session_model": "",
-            "prompted_sessions": [],
-            "warned_sessions": [],
-        }
+        return _default_state()
     try:
-        return json.loads(state_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, Exception):
-        return {
-            "session_model": "",
-            "prompted_sessions": [],
-            "warned_sessions": [],
-        }
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if not isinstance(state, dict):
+            return _default_state()
+    except (OSError, json.JSONDecodeError):
+        return _default_state()
+
+    defaults = _default_state()
+    for key, value in defaults.items():
+        if key not in state or not isinstance(state[key], type(value)):
+            state[key] = value
+    state.pop("session_model", None)
+    return state
 
 
-def _write_state(state: dict) -> None:
-    """写入状态文件。
-
-    Args:
-        state: 状态字典
-    """
-    state_path = get_state_path()
+def _write_state_unlocked(state: dict, cwd: str | Path | None = None) -> None:
+    state_path = get_state_path(cwd)
     state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps(state, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    temporary = state_path.parent / f".state.{uuid.uuid4().hex}.tmp"
+    try:
+        temporary.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary, state_path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
-def get_session_model() -> str:
-    """获取当前 session 的模型名称。
-
-    Returns:
-        str: 模型名称
-    """
-    return _read_state().get("session_model", "")
-
-
-def set_session_model(model: str) -> None:
-    """设置当前 session 的模型名称。
-
-    Args:
-        model: 模型名称
-    """
-    state = _read_state()
-    state["session_model"] = model
-    _write_state(state)
+def _update_state(update, cwd: str | Path | None = None) -> None:
+    state_path = get_state_path(cwd)
+    with file_lock(state_path.parent / ".state.lock"):
+        state = _read_state(cwd)
+        update(state)
+        _write_state_unlocked(state, cwd)
 
 
-def is_session_prompted(session_id: str) -> bool:
-    """检查 session 是否已提示过 handoff。
-
-    Args:
-        session_id: 会话 ID
-
-    Returns:
-        bool: 是否已提示
-    """
-    return session_id in _read_state().get("prompted_sessions", [])
+def _append_bounded(state: dict, key: str, session_id: str) -> bool:
+    entries = state.setdefault(key, [])
+    if session_id in entries:
+        return False
+    entries.append(session_id)
+    del entries[:-_MAX_SESSION_ENTRIES]
+    return True
 
 
-def mark_session_prompted(session_id: str) -> None:
-    """标记 session 已提示过 handoff。
-
-    Args:
-        session_id: 会话 ID
-    """
-    state = _read_state()
-    if session_id not in state.get("prompted_sessions", []):
-        state.setdefault("prompted_sessions", []).append(session_id)
-        _write_state(state)
+def get_session_model(session_id: str, cwd: str | Path | None = None) -> str:
+    return _read_state(cwd).get("session_models", {}).get(session_id, "")
 
 
-def is_session_warned(session_id: str) -> bool:
-    """检查 session 是否已警告过上下文超限。
+def set_session_model(session_id: str, model: str, cwd: str | Path | None = None) -> None:
+    def update(state):
+        models = state.setdefault("session_models", {})
+        models[session_id] = model
+        while len(models) > _MAX_SESSION_ENTRIES:
+            del models[next(iter(models))]
 
-    Args:
-        session_id: 会话 ID
-
-    Returns:
-        bool: 是否已警告
-    """
-    return session_id in _read_state().get("warned_sessions", [])
+    _update_state(update, cwd)
 
 
-def mark_session_warned(session_id: str) -> None:
-    """标记 session 已警告过上下文超限。
+def is_session_prompted(session_id: str, cwd: str | Path | None = None) -> bool:
+    return session_id in _read_state(cwd).get("prompted_sessions", [])
 
-    Args:
-        session_id: 会话 ID
-    """
-    state = _read_state()
-    if session_id not in state.get("warned_sessions", []):
-        state.setdefault("warned_sessions", []).append(session_id)
-        _write_state(state)
+
+def mark_session_prompted(session_id: str, cwd: str | Path | None = None) -> None:
+    _update_state(lambda state: _append_bounded(state, "prompted_sessions", session_id), cwd)
+
+
+def is_session_warned(session_id: str, cwd: str | Path | None = None) -> bool:
+    return session_id in _read_state(cwd).get("warned_sessions", [])
+
+
+def mark_session_warned(session_id: str, cwd: str | Path | None = None) -> None:
+    _update_state(lambda state: _append_bounded(state, "warned_sessions", session_id), cwd)
+
+
+def is_session_warned_early(session_id: str, cwd: str | Path | None = None) -> bool:
+    return session_id in _read_state(cwd).get("warned_sessions_early", [])
+
+
+def mark_session_warned_early(session_id: str, cwd: str | Path | None = None) -> None:
+    _update_state(lambda state: _append_bounded(state, "warned_sessions_early", session_id), cwd)
+
+
+def get_last_insight_turn(session_id: str, cwd: str | Path | None = None) -> int:
+    return int(_read_state(cwd).get("insight_turns", {}).get(session_id, 0))
+
+
+def set_last_insight_turn(session_id: str, turns: int, cwd: str | Path | None = None) -> None:
+    def update(state):
+        turns_by_session = state.setdefault("insight_turns", {})
+        turns_by_session[session_id] = turns
+        while len(turns_by_session) > _MAX_SESSION_ENTRIES:
+            del turns_by_session[next(iter(turns_by_session))]
+
+    _update_state(update, cwd)
