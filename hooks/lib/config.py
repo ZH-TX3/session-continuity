@@ -11,6 +11,7 @@ DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "default.
 
 # 默认配置 (硬编码兜底)
 FALLBACK_CONFIG = {
+    "handler": "plugin",
     "handoff": {
         "promptMode": "reply",
         "staleDays": 3,

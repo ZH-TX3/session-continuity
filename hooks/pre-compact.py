@@ -33,7 +33,7 @@ def main() -> None:
         data = {}
 
     cwd = data.get("cwd")
-    if not is_continuity_handler():
+    if not is_continuity_handler(cwd=cwd):
         log("PreCompact: plugin handler disabled", cwd)
         return
     if data.get("trigger", "unknown") != "auto":

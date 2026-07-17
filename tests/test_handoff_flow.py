@@ -27,7 +27,7 @@ class TemporaryProject(unittest.TestCase):
         (self.root / ".claude").mkdir()
         self.env = os.environ.copy()
         self.env["CLAUDE_PROJECT_DIR"] = str(self.root)
-        self.env["CLAUDE_SESSION_CONTINUITY_HANDLER"] = "plugin"
+        self.env["CLAUDE_SESSION_CONTINUITY_HANDLER"] = "project"
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -80,12 +80,24 @@ class TestHandoffFlow(TemporaryProject):
         self.assertIsNone(second)
         self.assertTrue(target.exists())
 
-    def test_project_owner_disables_plugin_hooks(self):
+    def test_inherited_project_owner_does_not_disable_plugin(self):
         self.write_handoff()
         _, output = self.run_hook(
             SESSION_START,
+            {"session_id": "inherited-owner", "source": "startup", "cwd": str(self.root)},
+        )
+        self.assertIsNotNone(output)
+        self.assertIn("待处理 HANDOFF", output["hookSpecificOutput"]["additionalContext"])
+
+    def test_project_config_disables_plugin_hooks(self):
+        self.write_handoff()
+        (self.root / ".claude" / "session-continuity.json").write_text(
+            json.dumps({"handler": "project"}),
+            encoding="utf-8",
+        )
+        _, output = self.run_hook(
+            SESSION_START,
             {"session_id": "disabled", "source": "startup", "cwd": str(self.root)},
-            {"CLAUDE_SESSION_CONTINUITY_HANDLER": "project"},
         )
         self.assertIsNone(output)
 

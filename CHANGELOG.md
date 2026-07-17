@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.1 (2026-07-17)
+
+### Fixed
+
+- **处理器归属隔离**：改用当前项目 `.claude/session-continuity.json` 的 `handler`，不再读取会跨项目继承的 `CLAUDE_SESSION_CONTINUITY_HANDLER`。
+- **插件默认接管**：未配置 `handler` 时默认由插件处理；保留项目 Hook 时显式设置 `{"handler": "project"}`。
+- **SessionStart Handoff**：确认前只读取 frontmatter、mtime 和大小；加载后归档至项目 `.claude/session-continuity/history/`。
+- **插件清单**：修正 `plugin.json` schema，并保留顶层中文描述。
+
+### Changed
+
+- **上下文预警**：70% 轻提示 `/save-state`，80% 强提示 `/save-state` 后 `/clear`，两级分别按 session 去重。
+- **Insight 注入**：SessionStart 只注入 high/active 的前 3 条核心经验，约 200 token 预算。
+- **状态布局**：统一为项目 `.claude/session-continuity/state.json`、`history/` 和 `logs/hook.log`。
+- **PreCompact**：只提醒手动 `/save-state`，不自动创建 Handoff。
+
 ## 1.0.0 (2026-06-24)
 
 ### Features

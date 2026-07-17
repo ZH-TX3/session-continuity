@@ -1,5 +1,6 @@
 """路径查找逻辑 — 自动查找 .claude 目录。"""
 
+import json
 import os
 from pathlib import Path
 
@@ -51,7 +52,14 @@ def get_log_path(cwd: str | Path | None = None) -> Path:
     return log_dir / "hook.log"
 
 
-def is_continuity_handler(handler: str = "plugin") -> bool:
-    """确保项目 Hook 与插件 Hook 只启用一个主处理器。"""
-    owner = os.environ.get("CLAUDE_SESSION_CONTINUITY_HANDLER", "project").strip().lower()
+def is_continuity_handler(handler: str = "plugin", cwd: str | Path | None = None) -> bool:
+    """处理器归属只读取当前项目配置，避免父进程环境变量跨项目串扰。"""
+    config_path = get_config_path(cwd)
+    owner = "plugin"
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            owner = str(config.get("handler", owner)).strip().lower()
+        except (OSError, json.JSONDecodeError):
+            pass
     return owner == handler

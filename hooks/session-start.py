@@ -82,7 +82,7 @@ def main() -> None:
         return
 
     cwd = data.get("cwd")
-    if not is_continuity_handler():
+    if not is_continuity_handler(cwd=cwd):
         log("SessionStart: plugin handler disabled", cwd)
         return
     try:

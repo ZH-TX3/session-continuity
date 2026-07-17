@@ -1,7 +1,8 @@
 {
-  "name": "session-continuity",
-  "version": "1.0.0",
+  "name": "sc",
+  "version": "1.0.1",
   "description": "Claude Code plugin for session continuity management — handoff detection, context warnings, and insight capture",
+  "main": "hooks/hooks.json",
   "private": true,
   "keywords": [
     "claude-code",

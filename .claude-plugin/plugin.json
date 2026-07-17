@@ -1,21 +1,8 @@
 {
   "name": "sc",
-  "owner": {
+  "version": "1.0.1",
+  "description": "会话连续性管理 — Handoff 检测、上下文预警、Insight 捕获",
+  "author": {
     "name": "XiaoJianJian"
-  },
-  "metadata": {
-    "description": "会话连续性管理 — Handoff 检测、上下文预警、Insight 捕获",
-    "version": "1.0.0"
-  },
-  "plugins": [
-    {
-      "name": "sc",
-      "description": "Session continuity management with handoff detection, context warnings, and insight capture",
-      "version": "1.0.0",
-      "author": {
-        "name": "XiaoJianJian"
-      },
-      "source": "./"
-    }
-  ]
+  }
 }

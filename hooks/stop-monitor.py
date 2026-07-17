@@ -118,7 +118,7 @@ def main() -> None:
         return
 
     cwd = data.get("cwd")
-    if not is_continuity_handler():
+    if not is_continuity_handler(cwd=cwd):
         return
     try:
         project_root = find_project_root(cwd)
