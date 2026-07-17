@@ -136,8 +136,8 @@ def main() -> None:
             if used > 0:
                 limit = get_context_limit(session_id, project_root)
                 ratio = used / limit
-                early_threshold = get_config_value("context.earlyWarningThreshold", 0.70)
-                critical_threshold = get_config_value("context.criticalThreshold", 0.80)
+                early_threshold = get_config_value("context.earlyWarningThreshold", 0.70, project_root)
+                critical_threshold = get_config_value("context.criticalThreshold", 0.80, project_root)
                 if ratio >= early_threshold and not is_session_warned_early(session_id, project_root):
                     mark_session_warned_early(session_id, project_root)
                     messages.append(
@@ -154,12 +154,12 @@ def main() -> None:
                     )
 
     turns, last_user_text = scan_transcript(transcript_path) if transcript_path else (0, "")
-    is_early = ratio >= get_config_value("context.earlyWarningThreshold", 0.70)
+    is_early = ratio >= get_config_value("context.earlyWarningThreshold", 0.70, project_root)
     if (
         looks_like_exit(last_user_text)
         or is_early
         or turns - get_last_insight_turn(session_id, project_root) >= INSIGHT_TURN_INTERVAL
-    ) and get_config_value("insight.enabled", True):
+    ) and get_config_value("insight.enabled", True, project_root):
         messages.append(INSIGHT_EVALUATION_PROMPT)
         set_last_insight_turn(session_id, turns, project_root)
 

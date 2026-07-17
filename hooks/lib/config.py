@@ -65,7 +65,7 @@ def _load_json_file(path: Path) -> dict:
         return {}
 
 
-def load_config() -> dict:
+def load_config(cwd: str | Path | None = None) -> dict:
     """加载配置，合并默认配置和项目配置。
 
     优先级 (从高到低):
@@ -82,14 +82,14 @@ def load_config() -> dict:
         default_config = FALLBACK_CONFIG
 
     # 加载项目配置
-    project_config_path = get_config_path()
+    project_config_path = get_config_path(cwd)
     project_config = _load_json_file(project_config_path)
 
     # 合并配置 (项目配置覆盖默认配置)
     return _deep_merge(default_config, project_config)
 
 
-def get_config_value(key_path: str, default: Any = None) -> Any:
+def get_config_value(key_path: str, default: Any = None, cwd: str | Path | None = None) -> Any:
     """获取配置值，支持点号分隔的路径。
 
     Args:
@@ -105,7 +105,7 @@ def get_config_value(key_path: str, default: Any = None) -> Any:
         >>> get_config_value("context.criticalThreshold")
         0.80
     """
-    config = load_config()
+    config = load_config(cwd)
     keys = key_path.split(".")
     value = config
     for key in keys:

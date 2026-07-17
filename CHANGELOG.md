@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 (2026-07-17)
+
+### Changed
+
+- **统一配置来源**：`handoff.promptMode` 由插件 `config/default.json` 提供默认值，项目 `.claude/session-continuity.json` 只按需覆盖。
+- **显式项目定位**：插件 Hook 将事件对应项目路径传给配置加载器，避免依赖进程 cwd。
+- **环境变量收敛**：Handoff 交互模式不再读取 `CLAUDE_HANDOFF_PROMPT_MODE`。
+
 ## 1.0.1 (2026-07-17)
 
 ### Fixed

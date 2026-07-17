@@ -106,7 +106,7 @@ def main() -> None:
     path = handoff_path(project_root)
     metadata = read_metadata(path) if path.exists() else None
     if metadata and metadata.size > 0 and not (session_id and is_session_prompted(session_id, project_root)):
-        stale_seconds = get_config_value("handoff.staleDays", 3) * 86400
+        stale_seconds = get_config_value("handoff.staleDays", 3, project_root) * 86400
         age_seconds = datetime.now().timestamp() - metadata.mtime
         if age_seconds > stale_seconds:
             stale_days = int(age_seconds // 86400)
@@ -117,7 +117,7 @@ def main() -> None:
                 ".claude/session-continuity/history/；否则不得读取正文。"
             )
         else:
-            configured = get_config_value("handoff.promptMode", "reply")
+            configured = get_config_value("handoff.promptMode", "reply", project_root)
             mode = "ask-user-question" if configured in {"ask", "ask-user-question"} else "reply"
             message, context = build_handoff_message(metadata, mode)
             messages.append(message)
