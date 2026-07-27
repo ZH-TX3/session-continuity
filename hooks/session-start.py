@@ -12,7 +12,6 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from handoff import handoff_path, read_metadata
 from lib.config import get_config_value
-from lib.insights import get_injection_text
 from lib.paths import get_claude_dir, find_project_root, is_continuity_handler
 from lib.state import is_session_prompted, mark_session_prompted, set_session_model
 
@@ -124,13 +123,6 @@ def main() -> None:
             hook_output["additionalContext"] = context
         if session_id:
             mark_session_prompted(session_id, project_root)
-
-    try:
-        insights_text = get_injection_text(project_root / ".claude" / "insights" / "INDEX.md")
-        if insights_text:
-            messages.append(insights_text)
-    except Exception as error:
-        log(f"SessionStart: insights injection error: {error}", project_root)
 
     if messages:
         print(json.dumps({"systemMessage": "\n\n".join(messages), "hookSpecificOutput": hook_output}, ensure_ascii=False))

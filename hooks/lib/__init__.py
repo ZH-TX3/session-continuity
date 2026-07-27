@@ -10,6 +10,12 @@ from .state import (
     is_session_warned,
     mark_session_warned,
 )
+from .insight_state import (
+    get_session_model as get_insight_session_model,
+    set_session_model as set_insight_session_model,
+    get_last_insight_turn,
+    set_last_insight_turn,
+)
 
 __all__ = [
     "find_project_root",
@@ -25,4 +31,8 @@ __all__ = [
     "mark_session_prompted",
     "is_session_warned",
     "mark_session_warned",
+    "get_insight_session_model",
+    "set_insight_session_model",
+    "get_last_insight_turn",
+    "set_last_insight_turn",
 ]

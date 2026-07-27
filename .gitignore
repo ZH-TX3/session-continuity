@@ -6,3 +6,5 @@ dist/
 build/
 .eggs/
 *.egg
+hooks/__pycache__/
+hooks/lib/__pycache__/

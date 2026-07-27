@@ -1,5 +1,5 @@
 {
-  "description": "Session continuity hooks — handoff detection, context warnings, auto-save",
+  "description": "Session continuity hooks — handoff detection, context warnings, auto-save; insight evaluation and injection",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/insight-session-start.py\"",
             "timeout": 10
           }
         ]
@@ -19,7 +24,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-monitor.py\"",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-monitor.py\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/insight-stop.py\"",
             "timeout": 5
           }
         ]
@@ -31,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.py\"",
+            "command": "py \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact.py\"",
             "timeout": 5
           }
         ]
