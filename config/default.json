@@ -11,7 +11,7 @@
     "forceSaveThreshold": 0.85
   },
   "insight": {
-    "enabled": true,
+    "enabled": false,
     "minMessages": 10
   }
 }

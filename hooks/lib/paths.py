@@ -6,11 +6,12 @@ from pathlib import Path
 
 
 def find_project_root(cwd: str | Path | None = None) -> Path:
-    """优先使用 CLAUDE_PROJECT_DIR，否则从 cwd 向上查找 .claude。"""
-    env_root = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
-    if env_root:
-        return Path(env_root).expanduser().resolve()
+    """从事件 cwd 向上查找 .claude；找不到时才回退到 CLAUDE_PROJECT_DIR。
 
+    cwd 优先的原因：CLAUDE_PROJECT_DIR 固定为会话启动目录，不跟随工作目录
+    切换。在嵌套项目（父仓库内含独立 .claude 的子项目）中，优先使用它会把
+    状态写到父项目，导致子项目的 HANDOFF.md 永远检测不到。
+    """
     current = Path(cwd) if cwd else Path.cwd()
     current = current.resolve()
     if current.is_file():
@@ -18,6 +19,11 @@ def find_project_root(cwd: str | Path | None = None) -> Path:
     for candidate in (current, *current.parents):
         if (candidate / ".claude").is_dir():
             return candidate
+
+    env_root = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+
     raise RuntimeError(f"无法从 {current} 定位包含 .claude 的项目目录")
 
 

@@ -16,6 +16,8 @@ def _default_state() -> dict:
         "session_models": {},
         "prompted_sessions": [],
         "warned_sessions": [],
+        "warned_sessions_early": [],
+        "insight_turns": {},
     }
 
 
@@ -102,3 +104,16 @@ def is_session_warned_early(session_id: str, cwd: str | Path | None = None) -> b
 
 def mark_session_warned_early(session_id: str, cwd: str | Path | None = None) -> None:
     _update_state(lambda state: _append_bounded(state, "warned_sessions_early", session_id), cwd)
+
+
+def get_last_insight_turn(session_id: str, cwd: str | Path | None = None) -> int:
+    return int(_read_state(cwd).get("insight_turns", {}).get(session_id, 0))
+
+
+def set_last_insight_turn(session_id: str, turns: int, cwd: str | Path | None = None) -> None:
+    def update(state):
+        turns_by_session = state.setdefault("insight_turns", {})
+        turns_by_session[session_id] = turns
+        while len(turns_by_session) > _MAX_SESSION_ENTRIES:
+            del turns_by_session[next(iter(turns_by_session))]
+    _update_state(update, cwd)

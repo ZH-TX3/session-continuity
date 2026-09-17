@@ -54,10 +54,47 @@ def test_get_handoff_path():
     print("[OK] test_get_handoff_path passed (path={handoff_path})")
 
 
+def test_nested_project_prefers_event_cwd_over_env():
+    """嵌套项目：CLAUDE_PROJECT_DIR 指向父项目时，仍按事件 cwd 定位最近项目。"""
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmp:
+        parent = Path(tmp).resolve()
+        child = parent / "child"
+        (parent / ".claude").mkdir()
+        (child / ".claude").mkdir(parents=True)
+
+        with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(parent)}):
+            assert find_project_root(child) == child, "cwd 应优先于 CLAUDE_PROJECT_DIR"
+            assert find_project_root(child / "src") == child, "应从子目录向上定位到 child"
+        print("[OK] test_nested_project_prefers_event_cwd_over_env passed")
+
+
+def test_env_fallback_when_cwd_has_no_claude():
+    """事件 cwd 链路无 .claude 时，回退到 CLAUDE_PROJECT_DIR。"""
+    import os
+    import tempfile
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmp:
+        parent = Path(tmp).resolve()
+        (parent / ".claude").mkdir()
+        orphan = parent / "orphan"
+        orphan.mkdir()
+
+        with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(parent)}):
+            assert find_project_root(orphan) == parent, "应回退到 CLAUDE_PROJECT_DIR"
+        print("[OK] test_env_fallback_when_cwd_has_no_claude passed")
+
+
 if __name__ == "__main__":
     test_find_project_root()
     test_get_claude_dir()
     test_get_config_path()
     test_get_state_path()
     test_get_handoff_path()
+    test_nested_project_prefers_event_cwd_over_env()
+    test_env_fallback_when_cwd_has_no_claude()
     print("\n[OK] All paths tests passed")

@@ -23,7 +23,7 @@ FALLBACK_CONFIG = {
         "forceSaveThreshold": 0.85,
     },
     "insight": {
-        "enabled": True,
+        "enabled": False,
         "minMessages": 10,
     },
 }

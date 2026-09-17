@@ -30,6 +30,10 @@
 **触发时机**: 新会话、/clear、resume
 **触发源过滤**: 仅 `source ∈ {"startup", "clear"}` 时注入
 
+**项目定位**: 以事件 `cwd` 向上查找最近的 `.claude/`；找不到时才回退到
+`CLAUDE_PROJECT_DIR`。该环境变量固定为会话启动目录、不跟随工作目录切换，
+因此在嵌套项目（父仓库内含独立 `.claude` 的子项目）中不能作为首选。
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  1. 保存模型信息到 .hooks-state.json                      │
@@ -266,6 +270,7 @@
 | 现象 | 可能原因 | 解决方案 |
 |------|---------|---------|
 | SessionStart 未注入 HANDOFF | source 不在 {"startup", "clear"} | 检查 hook.log，确认 source 值 |
+| 嵌套子项目检测不到 HANDOFF | 项目定位错误，状态写到了父项目 | 确认 `find_project_root` 以 cwd 优先；检查父项目 `.claude/session-continuity/` 是否有该会话的状态 |
 | 用户选择「加载」后 Claude 未读取 | additionalContext 被吞掉 | 检查运行环境是否支持 `<system-reminder>` |
 | PreCompact 未触发保存 | HANDOFF.md 已存在 | 符合预期，避免覆盖用户手动保存 |
 | Stop 未警告上下文 | usage=0 或 transcript 不存在 | 检查 hook.log 中的 usage 值 |

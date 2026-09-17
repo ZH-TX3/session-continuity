@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 (2026-07-18)
+
+### Fixed
+
+- **嵌套项目定位错误**：`find_project_root` 改为以事件 `cwd` 向上查找最近的项目，`CLAUDE_PROJECT_DIR` 降级为兜底。该环境变量固定为会话启动目录、不跟随工作目录切换，原先的优先级会让父仓库内含独立 `.claude` 的子项目把状态写到父项目，导致子项目的 `HANDOFF.md` 永远检测不到、新会话无任何提示且不写日志。
+- **save-state 技能路径定位**：不再依赖可能缺失的 `CLAUDE_PLUGIN_ROOT` 环境变量，改为按磁盘路径搜索插件/项目的 `handoff.py`（marketplace → cache → 项目 hooks），找不到时内联原子写兜底，杜绝退化成普通文件覆盖。
+
 ## 1.0.2 (2026-07-17)
 
 ### Changed
