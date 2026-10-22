@@ -18,6 +18,7 @@ import handoff
 
 SESSION_START = HOOKS_DIR / "session-start.py"
 PRE_COMPACT = HOOKS_DIR / "pre-compact.py"
+USER_PROMPT_SUBMIT = HOOKS_DIR / "user-prompt-submit.py"
 
 
 class TemporaryProject(unittest.TestCase):
@@ -115,6 +116,43 @@ class TestHandoffFlow(TemporaryProject):
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertIn("/save-state", output["systemMessage"])
         self.assertFalse((self.root / ".claude" / "HANDOFF.md").exists())
+
+
+class TestUserPromptSubmitFallback(TemporaryProject):
+    """SessionStart 静默（如 resume）时，用户明确回复加载/跳过的兜底注入。"""
+
+    def test_load_intent_injects_instruction_without_body(self):
+        self.write_handoff(secret="NEVER_INJECT_THIS_BODY")
+        _, output = self.run_hook(USER_PROMPT_SUBMIT, {"prompt": "加载", "cwd": str(self.root)})
+        self.assertIsNotNone(output)
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("HANDOFF.md", context)
+        self.assertIn("session-continuity/history", context)
+        self.assertNotIn("NEVER_INJECT_THIS_BODY", context)
+
+    def test_skip_intent_forbids_reading_body(self):
+        self.write_handoff()
+        _, output = self.run_hook(USER_PROMPT_SUBMIT, {"prompt": "跳过", "cwd": str(self.root)})
+        self.assertIsNotNone(output)
+        self.assertIn("跳过", output["hookSpecificOutput"]["additionalContext"])
+
+    def test_unrelated_message_is_silent(self):
+        self.write_handoff()
+        _, output = self.run_hook(USER_PROMPT_SUBMIT, {"prompt": "帮我改个 bug", "cwd": str(self.root)})
+        self.assertIsNone(output)
+
+    def test_load_without_pending_handoff_is_silent(self):
+        _, output = self.run_hook(USER_PROMPT_SUBMIT, {"prompt": "加载", "cwd": str(self.root)})
+        self.assertIsNone(output)
+
+    def test_project_owner_disables_plugin_fallback(self):
+        self.write_handoff()
+        (self.root / ".claude" / "session-continuity.json").write_text(
+            json.dumps({"handler": "project"}),
+            encoding="utf-8",
+        )
+        _, output = self.run_hook(USER_PROMPT_SUBMIT, {"prompt": "加载", "cwd": str(self.root)})
+        self.assertIsNone(output)
 
 
 if __name__ == "__main__":

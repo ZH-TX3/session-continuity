@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.0.7 (2026-10-22)
+
+### Added
+
+- **确定性加载 Skill**：`skills/load-handoff/SKILL.md`，用户可调用。命令展开/技能结果走用户消息或工具结果通道，绕开 hook `additionalContext` 在非 Claude 模型链路上被忽略的问题。
+- SessionStart 提示指向 `/load-handoff`，同时保留回复「跳过」与 `UserPromptSubmit` 兜底。
+
+### Why
+
+抓包确认 hook 注入内容确实进入了请求体，但位于用户消息之后的 `role: system` 消息中，且与 19–29 条其它 reminder 混在一起；`deepseek-v4.1-flash` 等模型不会读取该位置的指令。用户可调用的 Skill 走消息通道，可靠性更高。
+
+## 1.0.6 (2026-10-22)
+
+### Added
+
+- **确定性加载命令**：新增 `/sc:load-handoff`。命令展开后作为用户消息下发，绕开 hook `additionalContext` 在非 Claude 模型链路上被忽略的问题。
+- SessionStart 提示改为「输入 /sc:load-handoff 加载，或回复跳过」。
+
+### Why
+
+抓包确认 hook 注入内容确实进入了请求体，但位于用户消息之后的 `role: system` 消息中，且与 19–29 条其它 reminder 混在一起；`deepseek-v4.1-flash` 等模型不会读取该位置的指令。斜杠命令走用户消息通道，可靠性更高。
+
+## 1.0.5 (2026-10-22)
+
+### Changed
+
+- **恢复 Handoff 主题锚点**：SessionStart 重新提取「## 本会话主题」第一行并写入 `systemMessage` 与 `additionalContext`，只读到该小节首个非空行，不注入正文。用于降低弱模型把「加载」误判为其它意图的概率。
+
+## 1.0.4 (2026-10-15)
+
+### Fixed
+
+- **「加载」无上下文**：SessionStart 只在 `startup`/`clear` 注入指令；当会话来源为 `resume` 等时插件静默，模型收不到「加载 = 读取 HANDOFF.md」的说明，用户回复「加载」时不知所措。
+- 新增 `UserPromptSubmit` 兜底 Hook：用户消息明确为「加载 / 跳过」且当前项目存在待处理 `HANDOFF.md` 时补注入指令，与 SessionStart 来源无关。
+- 兜底仅在存在待处理 Handoff 时生效，普通消息与无 Handoff 场景保持静默；仍受 `handler` 项目归属约束。
+
 ## 1.0.3 (2026-07-18)
 
 ### Fixed

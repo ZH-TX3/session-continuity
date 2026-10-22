@@ -40,32 +40,63 @@ def relative_time(mtime: float) -> str:
     return f"约 {int(delta // 86400)} 天前"
 
 
-def build_handoff_message(metadata, mode: str) -> tuple[str, str]:
+def extract_topic(path: Path) -> str:
+    """只提取「## 本会话主题」下的第一行，作为模型识别 Handoff 的锚点。
+
+    只读到该小节第一个非空行为止，不读取正文其余内容。
+    """
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as stream:
+            in_section = False
+            for _ in range(300):
+                line = stream.readline()
+                if not line:
+                    break
+                stripped = line.strip()
+                if stripped in {"## 本会话主题", "## 主题"}:
+                    in_section = True
+                    continue
+                if in_section:
+                    if not stripped:
+                        continue
+                    if stripped.startswith("#"):
+                        break
+                    return stripped[:120]
+    except OSError:
+        pass
+    return ""
+
+
+def build_handoff_message(metadata, mode: str, topic: str = "") -> tuple[str, str]:
     mtime = datetime.fromtimestamp(metadata.mtime).strftime("%Y-%m-%d %H:%M")
     relative = relative_time(metadata.mtime)
     source_label = "手动保存" if metadata.source == "save-state" else "旧版格式"
     details = f"- 时间：{mtime}（{relative}）\n- 来源：{source_label}\n- 大小：{metadata.size} bytes"
+    if topic:
+        details += f"\n- 主题：{topic}"
 
     if mode == "ask-user-question":
-        message = f"检测到待加载的 Handoff：\n{details}\n\n请发送任意消息后选择加载或跳过。"
+        message = f"检测到待加载的 Handoff：\n{details}\n\n请输入 /load-handoff 加载，或回复「跳过」。"
         instruction = (
             "在回复用户下一条消息前，调用 AskUserQuestion 询问是否加载。"
-            "若用户选择加载，直接 Read 当前项目 .claude/HANDOFF.md、展示内容，"
+            "若用户选择加载或输入 /load-handoff，直接 Read 当前项目 .claude/HANDOFF.md、展示内容，"
             "再将其移动到 .claude/session-continuity/history/；"
             "若选择跳过，不得读取正文，继续处理用户原始消息。"
         )
     else:
-        message = f"检测到待加载的 Handoff：\n{details}\n\n请回复「加载」或「跳过」。"
+        message = f"检测到待加载的 Handoff：\n{details}\n\n输入 /load-handoff 加载，或回复「跳过」。"
         instruction = (
-            "用户回复加载/load/yes/y 时，直接 Read 当前项目 .claude/HANDOFF.md、展示内容，"
+            "用户输入 /load-handoff（或回复 加载/load/yes/y）时，直接 Read 当前项目 .claude/HANDOFF.md、展示内容，"
             "再将其移动到 .claude/session-continuity/history/。"
             "用户回复跳过/不加载/skip/no/n 时，不得读取正文，继续当前会话。"
         )
 
+    topic_line = f"- 主题: {topic}\n" if topic else ""
     context = (
         "[待处理 HANDOFF.md]\n"
         f"- 路径: {metadata.path}\n"
         f"- 时间: {mtime}（{relative}）\n"
+        f"{topic_line}"
         f"- 来源: {metadata.source}\n"
         f"- 交互模式: {mode}\n\n"
         f"{instruction} 加载后只恢复状态，不自动执行旧任务。"
@@ -118,7 +149,7 @@ def main() -> None:
         else:
             configured = get_config_value("handoff.promptMode", "reply", project_root)
             mode = "ask-user-question" if configured in {"ask", "ask-user-question"} else "reply"
-            message, context = build_handoff_message(metadata, mode)
+            message, context = build_handoff_message(metadata, mode, extract_topic(path))
             messages.append(message)
             hook_output["additionalContext"] = context
         if session_id:
