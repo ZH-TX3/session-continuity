@@ -74,8 +74,9 @@ class TestHandoffFlow(TemporaryProject):
         self.assertEqual(process.returncode, 0, process.stderr)
         serialized = json.dumps(first, ensure_ascii=False)
         self.assertNotIn("NEVER_INJECT_THIS_BODY", serialized)
-        self.assertIn("直接 Read", serialized)
-        self.assertIn("session-continuity/history", serialized)
+        # 默认 injectContext=false：只有 systemMessage 提示，不注入 additionalContext
+        self.assertIn("检测到待加载的 Handoff", first["systemMessage"])
+        self.assertNotIn("additionalContext", first.get("hookSpecificOutput", {}))
 
         _, second = self.run_hook(SESSION_START, data)
         self.assertIsNone(second)
@@ -88,7 +89,7 @@ class TestHandoffFlow(TemporaryProject):
             {"session_id": "inherited-owner", "source": "startup", "cwd": str(self.root)},
         )
         self.assertIsNotNone(output)
-        self.assertIn("待处理 HANDOFF", output["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("检测到待加载的 Handoff", output["systemMessage"])
 
     def test_project_config_disables_plugin_hooks(self):
         self.write_handoff()

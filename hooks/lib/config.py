@@ -16,6 +16,7 @@ FALLBACK_CONFIG = {
         "promptMode": "reply",
         "staleDays": 3,
         "autoLoadMaxAge": 3600,
+        "injectContext": False,
     },
     "context": {
         "earlyWarningThreshold": 0.70,

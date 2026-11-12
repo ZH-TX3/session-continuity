@@ -136,22 +136,25 @@ def main() -> None:
     path = handoff_path(project_root)
     metadata = read_metadata(path) if path.exists() else None
     if metadata and metadata.size > 0 and not (session_id and is_session_prompted(session_id, project_root)):
+        inject_context = bool(get_config_value("handoff.injectContext", False, project_root))
         stale_seconds = get_config_value("handoff.staleDays", 3, project_root) * 86400
         age_seconds = datetime.now().timestamp() - metadata.mtime
         if age_seconds > stale_seconds:
             stale_days = int(age_seconds // 86400)
             messages.append(f"存在 {stale_days} 天前的 Handoff，默认忽略；如需加载请回复「加载 handoff」。")
-            hook_output["additionalContext"] = (
-                f"[陈旧 HANDOFF.md]\n- 路径: {metadata.path}\n"
-                "仅当用户明确要求加载时，才 Read 当前项目 .claude/HANDOFF.md 并移至 "
-                ".claude/session-continuity/history/；否则不得读取正文。"
-            )
+            if inject_context:
+                hook_output["additionalContext"] = (
+                    f"[陈旧 HANDOFF.md]\n- 路径: {metadata.path}\n"
+                    "仅当用户明确要求加载时，才 Read 当前项目 .claude/HANDOFF.md 并移至 "
+                    ".claude/session-continuity/history/；否则不得读取正文。"
+                )
         else:
             configured = get_config_value("handoff.promptMode", "reply", project_root)
             mode = "ask-user-question" if configured in {"ask", "ask-user-question"} else "reply"
             message, context = build_handoff_message(metadata, mode, extract_topic(path))
             messages.append(message)
-            hook_output["additionalContext"] = context
+            if inject_context:
+                hook_output["additionalContext"] = context
         if session_id:
             mark_session_prompted(session_id, project_root)
 

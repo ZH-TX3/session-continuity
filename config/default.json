@@ -3,7 +3,8 @@
   "handoff": {
     "promptMode": "reply",
     "staleDays": 3,
-    "autoLoadMaxAge": 3600
+    "autoLoadMaxAge": 3600,
+    "injectContext": false
   },
   "context": {
     "earlyWarningThreshold": 0.70,

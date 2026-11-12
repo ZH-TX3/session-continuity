@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.8 (2026-11-12)
+
+### Added
+
+- **`handoff.injectContext` 配置项**（默认 `false`）：控制是否把 `[待处理 HANDOFF.md]` 指令块注入模型上下文（`additionalContext`）。默认关闭——SessionStart 只显示 `systemMessage` 提示横幅，不污染对话上下文。需要模型自动感知 Handoff 时显式设为 `true`。
+
+### Why
+
+`additionalContext` 会进入模型上下文并常驻，容易污染对话；而 `systemMessage` 仅用于向用户展示。多数用户只需要「开头看到提示」，不需要注入。改为默认不注入，减少上下文污染。
+
 ## 1.0.7 (2026-10-22)
 
 ### Added
