@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9 (2026-11-19)
+
+### Fixed
+
+- **save-state 写错目录**：SKILL.md 顶部新增硬约束——唯一写入目标是 `<项目根>/.claude/HANDOFF.md`，严禁写入 `.claude/session-continuity/history/`（那是 load-handoff 的归档目录），并禁止执行前 `ls history/` 照抄历史文件命名。修复模型把 save-state 输出误写进 history 的问题。
+
 ## 1.0.8 (2026-11-12)
 
 ### Added

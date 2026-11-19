@@ -9,6 +9,10 @@ user-invocable: true
 
 将当前会话状态原子写入当前项目 `.claude/HANDOFF.md`，供下一个 session 的 SessionStart hook 检测。
 
+> ⚠️ **唯一写入目标：`<项目根>/.claude/HANDOFF.md`（单文件，固定路径）。**
+> 绝对**不要**写入 `.claude/session-continuity/history/`——那是 `load-handoff` 加载后的归档目录，不是 save-state 的输出位置。
+> 不要照抄 `history/` 里已有文件的命名或位置；那些是历史归档，与本命令无关。执行前**不要先 `ls history/` 去"看格式"**，直接按本文件的模板生成内容。
+
 ## 执行步骤
 
 1. 解析项目路径：从当前工作目录向上查找最近的 `.claude/`；找不到时才使用 `CLAUDE_PROJECT_DIR`。该环境变量固定为会话启动目录、不跟随工作目录切换，嵌套项目下会指向错误的父目录。所有状态和临时文件必须留在该项目 `.claude/` 内。
